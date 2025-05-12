@@ -1,0 +1,9 @@
+{
+  "name": "Camera Sync Recorder",
+  "short_name": "CamSync",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "landscape"
+}
