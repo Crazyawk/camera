@@ -3,31 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <title>Camera Sync Recorder</title>
-
-  <!-- Link to manifest for PWA -->
   <link rel="manifest" href="manifest.json">
-
-  <!-- Meta tags for fullscreen and iOS compatibility -->
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 </head>
 <body>
   <h1>Camera Sync Recorder</h1>
-  <video id="preview" autoplay muted playsinline></video>
-  <br>
+  <video id="preview" autoplay muted playsinline></video><br>
   <button id="startBtn">Start Recording</button>
   <button id="stopBtn">Stop Recording</button>
-  <a id="downloadLink" style="display:none">Download Video</a>
+  <a id="downloadLink" style="display:none">Download MP4</a>
 
-  <!-- Firebase SDK (classic / compat version) -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
+  <!-- ffmpeg.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+
   <script>
-    // Your Firebase config (pasted and fixed)
     const firebaseConfig = {
       apiKey: "AIzaSyDqm6NoaltiX0r7kq-OQ4jXRW_eGUmyXrE",
       authDomain: "camera-sync-app.firebaseapp.com",
@@ -39,11 +35,9 @@
       measurementId: "G-H49GGMWVZT"
     };
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Camera and recording setup
     const preview = document.getElementById('preview');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
@@ -61,12 +55,27 @@
         if (e.data.size > 0) recordedBlobs.push(e.data);
       };
       mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedBlobs, { type: 'video/webm' });
-        downloadLink.href = URL.createObjectURL(blob);
-        downloadLink.download = 'recording.webm';
-        downloadLink.style.display = 'block';
-        downloadLink.textContent = 'Download Video';
+        const webmBlob = new Blob(recordedBlobs, { type: 'video/webm' });
+        convertToMP4(webmBlob);
       };
+    }
+
+    async function convertToMP4(webmBlob) {
+      const { createFFmpeg, fetchFile } = FFmpeg;
+      const ffmpeg = createFFmpeg({ log: true });
+      await ffmpeg.load();
+
+      ffmpeg.FS('writeFile', 'input.webm', await fetchFile(webmBlob));
+      await ffmpeg.run('-i', 'input.webm', '-c:v', 'libx264', '-crf', '23', '-preset', 'veryfast', 'output.mp4');
+
+      const data = ffmpeg.FS('readFile', 'output.mp4');
+      const mp4Blob = new Blob([data.buffer], { type: 'video/mp4' });
+      const mp4URL = URL.createObjectURL(mp4Blob);
+
+      downloadLink.href = mp4URL;
+      downloadLink.download = 'recording.mp4';
+      downloadLink.textContent = 'Download MP4';
+      downloadLink.style.display = 'block';
     }
 
     initCamera();
