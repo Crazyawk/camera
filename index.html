@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Camera Sync Recorder</title>
+
+  <!-- Link to manifest for PWA -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Meta tags for fullscreen and iOS compatibility -->
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+</head>
+<body>
+  <h1>Camera Sync Recorder</h1>
+  <video id="preview" autoplay muted playsinline></video>
+  <br>
+  <button id="startBtn">Start Recording</button>
+  <button id="stopBtn">Stop Recording</button>
+  <a id="downloadLink" style="display:none">Download Video</a>
+
+  <!-- Firebase SDK (classic / compat version) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+  <script>
+    // Your Firebase config (pasted and fixed)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDqm6NoaltiX0r7kq-OQ4jXRW_eGUmyXrE",
+      authDomain: "camera-sync-app.firebaseapp.com",
+      databaseURL: "https://camera-sync-app-default-rtdb.firebaseio.com",
+      projectId: "camera-sync-app",
+      storageBucket: "camera-sync-app.appspot.com",
+      messagingSenderId: "146645899149",
+      appId: "1:146645899149:web:b746956a5fa40723650fc4",
+      measurementId: "G-H49GGMWVZT"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Camera and recording setup
+    const preview = document.getElementById('preview');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const downloadLink = document.getElementById('downloadLink');
+
+    let mediaRecorder;
+    let recordedBlobs = [];
+
+    async function initCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      preview.srcObject = stream;
+
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedBlobs.push(e.data);
+      };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedBlobs, { type: 'video/webm' });
+        downloadLink.href = URL.createObjectURL(blob);
+        downloadLink.download = 'recording.webm';
+        downloadLink.style.display = 'block';
+        downloadLink.textContent = 'Download Video';
+      };
+    }
+
+    initCamera();
+
+    startBtn.onclick = () => db.ref('control').set({ action: 'start', timestamp: Date.now() });
+    stopBtn.onclick = () => db.ref('control').set({ action: 'stop', timestamp: Date.now() });
+
+    db.ref('control').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+      if (data.action === 'start' && mediaRecorder?.state === 'inactive') {
+        recordedBlobs = [];
+        mediaRecorder.start();
+        console.log("Recording started");
+      } else if (data.action === 'stop' && mediaRecorder?.state === 'recording') {
+        mediaRecorder.stop();
+        console.log("Recording stopped");
+      }
+    });
+  </script>
+</body>
+</html>
