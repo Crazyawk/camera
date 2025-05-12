@@ -48,7 +48,7 @@
     let mediaRecorder;
     let recordedBlobs = [];
     let currentStream;
-    let currentCamera = 'environment';  // Default camera (back camera)
+    let currentCamera = 'environment';  // Default to back camera
     const preview = document.getElementById('preview');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
@@ -89,7 +89,7 @@
       };
     }
 
-    // Start camera initially
+    // Start camera initially with the back camera
     initCamera();
 
     // Switch camera between front and back
