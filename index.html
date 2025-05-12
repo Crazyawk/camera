@@ -12,7 +12,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 </head>
 <body>
   <h1>Camera Sync Recorder</h1>
@@ -20,14 +19,17 @@
   <br>
   <button id="startBtn">Start Recording</button>
   <button id="stopBtn">Stop Recording</button>
-  <a id="downloadLink" style="display:none">Download Video</a>
+  <a id="downloadLink" style="display:none">Download MP4 Video</a>
 
   <!-- Firebase SDK (classic / compat version) -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
+  <!-- Include ffmpeg.js for video conversion -->
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.2/ffmpeg.min.js"></script>
+
   <script>
-    // Your Firebase config (pasted and fixed)
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDqm6NoaltiX0r7kq-OQ4jXRW_eGUmyXrE",
       authDomain: "camera-sync-app.firebaseapp.com",
@@ -62,11 +64,36 @@
       };
       mediaRecorder.onstop = () => {
         const blob = new Blob(recordedBlobs, { type: 'video/webm' });
-        downloadLink.href = URL.createObjectURL(blob);
-        downloadLink.download = 'recording.webm';
-        downloadLink.style.display = 'block';
-        downloadLink.textContent = 'Download Video';
+        convertWebMToMP4(blob); // Convert WebM to MP4
       };
+    }
+
+    // Convert WebM video to MP4 using ffmpeg.js
+    async function convertWebMToMP4(webmBlob) {
+      const ffmpeg = FFmpeg.createFFmpeg({ log: true });
+      await ffmpeg.load();
+
+      const fileName = 'input.webm';
+      const videoData = new Uint8Array(await webmBlob.arrayBuffer());
+
+      // Write the WebM blob to the virtual file system in ffmpeg
+      ffmpeg.FS('writeFile', fileName, videoData);
+
+      // Convert WebM to MP4
+      await ffmpeg.run('-i', fileName, 'output.mp4');
+
+      // Read the output MP4 file from ffmpeg's virtual file system
+      const mp4Data = ffmpeg.FS('readFile', 'output.mp4');
+
+      // Convert the output MP4 to a Blob and create a download link
+      const mp4Blob = new Blob([mp4Data.buffer], { type: 'video/mp4' });
+      const mp4Url = URL.createObjectURL(mp4Blob);
+
+      // Set the download link
+      downloadLink.href = mp4Url;
+      downloadLink.download = 'recording.mp4';
+      downloadLink.style.display = 'block';
+      downloadLink.textContent = 'Download MP4 Video';
     }
 
     initCamera();
