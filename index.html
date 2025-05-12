@@ -21,8 +21,6 @@
   <button id="startBtn">Start Recording</button>
   <button id="stopBtn">Stop Recording</button>
   <a id="downloadLink" style="display:none">Download Video</a>
-  <br>
-  <button id="switchCameraBtn">Switch Camera</button>
 
   <!-- Firebase SDK (classic / compat version) -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -45,37 +43,19 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    let mediaRecorder;
-    let recordedBlobs = [];
-    let currentStream;
-    let currentCamera = 'environment';  // Default to back camera
+    // Camera and recording setup
     const preview = document.getElementById('preview');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
     const downloadLink = document.getElementById('downloadLink');
-    const switchCameraBtn = document.getElementById('switchCameraBtn');
 
-    // Function to initialize camera with the selected device
+    let mediaRecorder;
+    let recordedBlobs = [];
+
     async function initCamera() {
-      // Stop any existing streams to switch to another camera
-      if (currentStream) {
-        const tracks = currentStream.getTracks();
-        tracks.forEach(track => track.stop());
-      }
-
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      const selectedDevice = videoDevices.find(device => device.label.toLowerCase().includes(currentCamera));
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: selectedDevice.deviceId, facingMode: currentCamera },
-        audio: true
-      });
-
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       preview.srcObject = stream;
-      currentStream = stream;
 
-      // Setup media recorder
       mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) recordedBlobs.push(e.data);
@@ -89,14 +69,7 @@
       };
     }
 
-    // Start camera initially with the back camera
     initCamera();
-
-    // Switch camera between front and back
-    switchCameraBtn.onclick = () => {
-      currentCamera = currentCamera === 'environment' ? 'user' : 'environment';  // Toggle between back and front
-      initCamera();  // Re-initialize with the new camera
-    };
 
     startBtn.onclick = () => db.ref('control').set({ action: 'start', timestamp: Date.now() });
     stopBtn.onclick = () => db.ref('control').set({ action: 'stop', timestamp: Date.now() });
